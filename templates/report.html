@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PCAP Triage Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        h1, h2, h3 { color: #2c3e50; cursor: pointer; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
+        th, td { border: 1px solid #ccc; padding: 6px 12px; }
+        th { background: #eee; }
+        .left-padded { text-align: left; padding-left: 20px; }
+        .mono { font-family: monospace; }
+        .col-url, .col-filename { max-width: 120px; word-break: break-all; white-space: pre-wrap; }
+        .col-type { max-width: 100px; word-break: break-all; }
+        .col-size { max-width: 70px; }
+        .col-hash { max-width: 160px; font-family: monospace; word-break: break-all; white-space: pre-wrap; }
+        .col-macro { max-width: 60px; }
+        .scroll-table { overflow-x: auto; width: 100%; }
+        .collapsible-content { display: block; margin-bottom: 2em; }
+        .collapsed { display: none; }
+        h2:after, h3:after { content: " ▼"; font-size: 0.8em; }
+        .collapsed-header:after { content: " ▶"; font-size: 0.8em; }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var headers = document.querySelectorAll("h2, h3");
+            headers.forEach(function(header) {
+                var next = header.nextElementSibling;
+                if (!next || (!next.classList.contains("collapsible-content") && !next.classList.contains("scroll-table")))
+                    return;
+                header.addEventListener("click", function() {
+                    let target = header.nextElementSibling;
+                    if (target.classList.contains("collapsible-content") || target.classList.contains("scroll-table")) {
+                        target.classList.toggle("collapsed");
+                        header.classList.toggle("collapsed-header");
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>PCAP Triage Report</h1>
+
+    <h2>External (Non-RFC1918) Destination IPs</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.public_dest_ips %}
+    <table>
+        <tr>
+            <th>Destination IP</th>
+            <th>Protocol Hierarchy</th>
+            <th>Count</th>
+        </tr>
+        {% for ip, proto, count in results.public_dest_ips %}
+        <tr>
+            <td>{{ ip }}</td>
+            <td>{{ proto }}</td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No public destination IPs found.</p>
+    {% endif %}
+    </div>
+
+    <h2>Port/Protocol Mismatches</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.port_proto_mismatches %}
+    <table>
+        <tr>
+            <th>Destination IP</th>
+            <th>Destination Port</th>
+            <th>Detected Protocol</th>
+            <th>Count</th>
+        </tr>
+        {% for entry in results.port_proto_mismatches %}
+        <tr>
+            <td>{{ entry.dst_ip }}</td>
+            <td>{{ entry.dst_port }}</td>
+            <td>{{ entry.protocol }}</td>
+            <td>{{ entry.count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No port/protocol mismatches detected.</p>
+    {% endif %}
+    </div>
+
+    <h2>DNS Anomalies</h2>
+    <div class="collapsible-content">
+    {% if results.dns_failed %}
+    <h3>Failed Queries</h3>
+    <div class="collapsible-content">
+    <ul>
+        {% for domain in results.dns_failed %}
+        <li>{{ domain }}</li>
+        {% endfor %}
+    </ul>
+    </div>
+    {% endif %}
+    {% if results.dns_long %}
+    <h3>Unusually Long Domains</h3>
+    <div class="collapsible-content">
+    <ul>
+        {% for domain in results.dns_long %}
+        <li>{{ domain }}</li>
+        {% endfor %}
+    </ul>
+    </div>
+    {% endif %}
+    {% if results.dns_rare %}
+    <h3>Rare TLDs</h3>
+    <div class="collapsible-content">
+    <ul>
+        {% for domain in results.dns_rare %}
+        <li>{{ domain }}</li>
+        {% endfor %}
+    </ul>
+    </div>
+    {% endif %}
+    {% if results.dns_txt %}
+    <h3>TXT Record Queries</h3>
+    <div class="collapsible-content">
+    <ul>
+        {% for domain in results.dns_txt %}
+        <li>{{ domain }}</li>
+        {% endfor %}
+    </ul>
+    </div>
+    {% endif %}
+    {% if results.dns_entropy %}
+    <h3>High-Entropy Domains (possible DNS tunneling/randomness)</h3>
+    <div class="collapsible-content">
+    <ul>
+        {% for domain in results.dns_entropy %}
+        <li>{{ domain }}</li>
+        {% endfor %}
+    </ul>
+    </div>
+    {% endif %}
+    {% if not (results.dns_failed or results.dns_long or results.dns_rare or results.dns_txt or results.dns_entropy) %}
+    <p>No DNS anomalies detected.</p>
+    {% endif %}
+    </div>
+
+    <h2>HTTP(s) Requests and Application Protocols</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.http_summary %}
+    <h3>HTTP Requests by Domain</h3>
+    <div class="scroll-table collapsible-content">
+    <table>
+        <tr>
+            <th>Domain</th>
+            <th>HTTP Methods</th>
+            <th>User-Agents</th>
+            <th>Content-Types</th>
+            <th>URL Count</th>
+            <th>Filenames</th>
+            <th class="left-padded">Request Body</th>
+        </tr>
+        {% for entry in results.http_summary %}
+        <tr>
+            <td>{{ entry.domain }}</td>
+            <td>{{ entry.methods }}</td>
+            <td>{{ entry.user_agents }}</td>
+            <td>{{ entry.content_types }}</td>
+            <td>{{ entry.url_count }}</td>
+            <td>{{ entry.filenames }}</td>
+            <td class="left-padded">{{ entry.request_body if entry.request_body is defined else '-' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% else %}
+    <p>No HTTP requests detected.</p>
+    {% endif %}
+    </div>
+
+    {% if results.http_file_info %}
+    <h3>Transferred Files via HTTP</h3>
+    <div class="scroll-table collapsible-content">
+    <table>
+        <tr>
+            <th>Domain</th>
+            <th>URL</th>
+            <th>Content-Type</th>
+            <th class="left-padded">Request Body</th>
+        </tr>
+        {% for file in results.http_file_info %}
+        <tr>
+            <td>{{ file.domain }}</td>
+            <td>{{ file.url }}</td>
+            <td>{{ file.content_type }}</td>
+            <td class="left-padded">{{ file.filename }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+
+    {% if results.http_unusual_agents %}
+    <h3>Unusual User-Agents</h3>
+    <div class="collapsible-content">
+    <ul>
+        {% for agent in results.http_unusual_agents %}
+        <li>{{ agent }}</li>
+        {% endfor %}
+    </ul>
+    </div>
+    {% endif %}
+
+    <h2>Suspicious or Unusual Flows</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.flows_high %}
+    <h3>High Volume Flows</h3>
+    <div class="scroll-table collapsible-content">
+    <table>
+        <tr>
+            <th>Destination IP</th>
+            <th>Port</th>
+            <th>Total Bytes</th>
+            <th>Packets</th>
+        </tr>
+        {% for f in results.flows_high %}
+        <tr>
+            <td>{{ f.dst }}</td>
+            <td>{{ f.port }}</td>
+            <td>{{ f.bytes }}</td>
+            <td>{{ f.pkts }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+    {% if results.flows_low %}
+    <h3>Low Volume Flows</h3>
+    <div class="scroll-table collapsible-content">
+    <table>
+        <tr>
+            <th>Destination IP</th>
+            <th>Port</th>
+            <th>Total Bytes</th>
+            <th>Packets</th>
+        </tr>
+        {% for f in results.flows_low %}
+        <tr>
+            <td>{{ f.dst }}</td>
+            <td>{{ f.port }}</td>
+            <td>{{ f.bytes }}</td>
+            <td>{{ f.pkts }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+    {% if results.flows_many_small %}
+    <h3>High Number of Small Flows (possible scan/beacon)</h3>
+    <div class="scroll-table collapsible-content">
+    <table>
+        <tr>
+            <th>Destination IP</th>
+            <th>Port</th>
+            <th>Unique Src IPs</th>
+            <th>Total Bytes</th>
+        </tr>
+        {% for f in results.flows_many_small %}
+        <tr>
+            <td>{{ f.dst }}</td>
+            <td>{{ f.port }}</td>
+            <td>{{ f.unique_srcs }}</td>
+            <td>{{ f.bytes }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+    {% if results.flows_syn_scan %}
+    <h3>Possible SYN Scans</h3>
+    <div class="scroll-table collapsible-content">
+    <table>
+        <tr>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Port</th>
+            <th>SYN-Only Count</th>
+            <th>Total Packets</th>
+        </tr>
+        {% for f in results.flows_syn_scan %}
+        <tr>
+            <td>{{ f.src }}</td>
+            <td>{{ f.dst }}</td>
+            <td>{{ f.port }}</td>
+            <td>{{ f.syn_count }}</td>
+            <td>{{ f.pkts }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+    {% if not (results.flows_high or results.flows_low or results.flows_many_small or results.flows_syn_scan) %}
+    <p>No suspicious/unusual flows detected.</p>
+    {% endif %}
+    </div>
+
+    <h2>Significant File Transfers and Payloads</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.file_transfers %}
+    <table>
+        <tr>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Domain</th>
+            <th class="col-url">URL</th>
+            <th class="col-filename">Filename</th>
+            <th class="col-type">Content-Type</th>
+            <th class="col-size">Size</th>
+            <th class="col-hash">SHA256</th>
+            <th class="col-macro">Macro-enabled</th>
+        </tr>
+        {% for file in results.file_transfers %}
+        <tr>
+            <td>{{ file.src_ip }}</td>
+            <td>{{ file.dst_ip }}</td>
+            <td>{{ file.domain }}</td>
+            <td class="col-url">{{ file.url }}</td>
+            <td class="col-filename">{{ file.filename }}</td>
+            <td class="col-type">{{ file.content_type }}</td>
+            <td class="col-size">{{ file.size }}</td>
+            <td class="col-hash">{{ file.sha256 }}</td>
+            <td class="col-macro">{{ file.macro_flag }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No significant file transfers detected.</p>
+    {% endif %}
+    </div>
+
+    <h2>Credentials and Sensitive Data Exposure</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.creds_exposed and results.creds_exposed|length > 0 %}
+    <table>
+        <tr>
+            <th>Type</th>
+            <th>Protocol</th>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Detail</th>
+        </tr>
+        {% for cred in results.creds_exposed %}
+        <tr>
+            <td>{{ cred.type }}</td>
+            <td>{{ cred.protocol }}</td>
+            <td>{{ cred.src_ip }}</td>
+            <td>{{ cred.dst_ip }}</td>
+            <td style="max-width:280px; word-break:break-all;">{{ cred.detail }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No cleartext credentials or sensitive data found.</p>
+    {% endif %}
+    </div>
+
+    <h2>Beaconing/Timing Patterns</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.beacon_patterns and results.beacon_patterns|length > 0 %}
+    <table>
+        <tr>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Count</th>
+            <th>Dominant Interval (sec)</th>
+            <th>Interval Variance</th>
+            <th>Sample Times (epoch)</th>
+        </tr>
+        {% for b in results.beacon_patterns %}
+        <tr>
+            <td>{{ b.src_ip }}</td>
+            <td>{{ b.dst_ip }}</td>
+            <td>{{ b.count }}</td>
+            <td>{{ b.interval }}</td>
+            <td>{{ b.interval_variance }}</td>
+            <td style="max-width:280px; word-break:break-all;">{{ b.sample_times|join(", ") }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No beaconing/periodic connections detected.</p>
+    {% endif %}
+    </div>
+
+    <h2>Protocol Oddities</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.weak_ssl and results.weak_ssl|length > 0 %}
+    <h3>Deprecated/Weak SSL/TLS</h3>
+    <table>
+        <tr>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Version</th>
+            <th>Cipher Suite</th>
+            <th>Timestamp</th>
+        </tr>
+        {% for w in results.weak_ssl %}
+        <tr>
+            <td>{{ w.src_ip }}</td>
+            <td>{{ w.dst_ip }}</td>
+            <td>{{ w.version }}</td>
+            <td>{{ w.cipher }}</td>
+            <td>{{ w.timestamp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if results.odd_proto and results.odd_proto|length > 0 %}
+    <h3>Unusual Transport Protocols / Tunnels</h3>
+    <table>
+        <tr>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Protocol #</th>
+            <th>Timestamp</th>
+        </tr>
+        {% for p in results.odd_proto %}
+        <tr>
+            <td>{{ p.src_ip }}</td>
+            <td>{{ p.dst_ip }}</td>
+            <td>{{ p.proto_num }}</td>
+            <td>{{ p.timestamp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if not (results.weak_ssl and results.weak_ssl|length > 0 or results.odd_proto and results.odd_proto|length > 0) %}
+    <p>No protocol oddities detected.</p>
+    {% endif %}
+    </div>
+
+    <h2>ARP and Layer 2 Oddities</h2>
+    <div class="scroll-table collapsible-content">
+    {% if results.gratuitous_arp and results.gratuitous_arp|length > 0 %}
+    <h3>Gratuitous ARP</h3>
+    <table>
+        <tr>
+            <th>IP</th>
+            <th>Sender MAC</th>
+            <th>Target MAC</th>
+            <th>Opcode</th>
+            <th>Packet #</th>
+        </tr>
+        {% for g in results.gratuitous_arp %}
+        <tr>
+            <td>{{ g.ip }}</td>
+            <td>{{ g.mac }}</td>
+            <td>{{ g.target_mac }}</td>
+            <td>{{ g.opcode }}</td>
+            <td>{{ g.index }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if results.duplicate_ip and results.duplicate_ip|length > 0 %}
+    <h3>Duplicate IPs (multiple MACs)</h3>
+    <table>
+        <tr>
+            <th>IP</th>
+            <th>MACs</th>
+        </tr>
+        {% for d in results.duplicate_ip %}
+        <tr>
+            <td>{{ d.ip }}</td>
+            <td>{{ d.macs|join(", ") }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if results.duplicate_mac and results.duplicate_mac|length > 0 %}
+    <h3>Duplicate MACs (multiple IPs)</h3>
+    <table>
+        <tr>
+            <th>MAC</th>
+            <th>IPs</th>
+        </tr>
+        {% for d in results.duplicate_mac %}
+        <tr>
+            <td>{{ d.mac }}</td>
+            <td>{{ d.ips|join(", ") }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if results.noisy_arp and results.noisy_arp|length > 0 %}
+    <h3>Noisy ARP Devices (frequent ARP)</h3>
+    <table>
+        <tr>
+            <th>IP</th>
+            <th>ARP Packet Count</th>
+        </tr>
+        {% for n in results.noisy_arp %}
+        <tr>
+            <td>{{ n.ip }}</td>
+            <td>{{ n.count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if not (results.gratuitous_arp or results.duplicate_ip or results.duplicate_mac or results.noisy_arp) %}
+    <p>No ARP or Layer 2 anomalies detected.</p>
+    {% endif %}
+    </div>
+
+</body>
+</html>
+
