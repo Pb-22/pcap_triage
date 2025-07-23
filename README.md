@@ -64,7 +64,7 @@ sudo apt install tshark tcpdump python3-tk
 **Clone and Run:**
 
 ```sh
-git clone https://github.com/YOUR_USERNAME/pcap-triage-tool.git
+git clone https://github.com/Pb-22/pcap-triage-tool.git
 cd pcap-triage-tool
 python pcap_triage.py
 ```
@@ -132,13 +132,13 @@ A: All processing is local. Review the code to confirm.
 **Software, screenshots, and documentation are released under the [CC0 1.0 Universal (Public Domain)](https://creativecommons.org/publicdomain/zero/1.0/) license.**
 
 You may freely use, share, remix, or commercialize this tool and its screenshots for any purpose, no attribution required (though it is appreciated).
-*If you improve the tool, find bugs, or want to collaborate—please [contact me](mailto:YOUR.EMAIL@YOURDOMAIN.COM) or open a pull request!*
+*If you improve the tool, find bugs, or want to collaborate—please [contact me](mailto:brian@brimerica.com) or open a pull request!*
 
 ---
 
 ## Credits
 
-* Written by \[YOUR NAME]
+* Written by \Pb-22 founder and CEO of BriMerica
 * MIT/CC0 1.0 Universal Public Domain Dedication
 
 ---
@@ -147,14 +147,4 @@ You may freely use, share, remix, or commercialize this tool and its screenshots
 
 ```
 
----
 
-**How to use:**
-- Save your screenshots as `screenshots/gui-select-file.png` and `screenshots/triage-report.png` (update names if needed).
-- Replace `YOUR_USERNAME`, `YOUR NAME`, and your contact email as appropriate.
-- Place this as your `README.md` in your repo root.
-
----
-
-Let me know if you want badges, a features table, or even more detail!
-```
