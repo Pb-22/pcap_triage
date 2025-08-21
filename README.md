@@ -1,6 +1,5 @@
+```markdown
 
-
-````markdown
 # PCAP Triage Tool
 
 A fast, flexible, GUI-driven Python tool for **automated triage and anomaly reporting** from PCAP files.  
@@ -147,6 +146,7 @@ You may freely use, share, remix, or commercialize this tool and its screenshots
 *PRs and feedback welcome! For questions or suggestions, open an issue or contact me directly.*
 
 ```
+
 
 
 
