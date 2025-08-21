@@ -15,6 +15,7 @@ Network defenders, threat hunters, and incident responders: get everything you n
 - **Exportable HTML Reports:** Collapsible, structured, and readable—ideal for briefings, audits, and hunt docs
 - **Wide Module Coverage**:
   - External (non-RFC1918) destination IPs and protocol hierarchy
+  - Domain Events Timeline that shows DNS Queries and says if the domain was browsed and if there was a resonse that shows client and server payload bytes (no header bytes counted)
   - Port/protocol mismatches (e.g., HTTP on non-standard ports)
   - DNS anomalies (failed lookups, long/random/rare domains, tunneling indicators)
   - HTTP(S) summaries (domains, methods, agents, files, content types, request bodies)
@@ -24,7 +25,7 @@ Network defenders, threat hunters, and incident responders: get everything you n
   - Beaconing/timing patterns (periodic C2, RAT callbacks)
   - Protocol oddities (weak SSL/TLS, unknown transport/tunnels)
   - ARP and Layer 2 oddities (gratuitous ARP, spoofing, duplicate MAC/IP, noisy ARP hosts)
-- **Customizable Ignore Lists:** Use `domain_ignore.txt` for noisy/known-safe domains (supports `*.example.com` wildcards)
+- **Customizable Ignore Lists:** Use `domain_ignore.txt` for noisy/known-safe domains (supports  `*example.com` wildcards)
 - **Error-Resilient:** All errors logged to `pcap_triage_error.log`; you never lose a report due to one bad packet
 - **Easy Extensibility:** Add your own analysis modules in the `PcapAnalyzer` class
 
@@ -146,5 +147,6 @@ You may freely use, share, remix, or commercialize this tool and its screenshots
 *PRs and feedback welcome! For questions or suggestions, open an issue or contact me directly.*
 
 ```
+
 
 
